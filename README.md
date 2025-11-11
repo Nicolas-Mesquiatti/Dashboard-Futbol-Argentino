@@ -3,6 +3,10 @@
 Este dashboard interactivo presenta un análisis exhaustivo de los jugadores del fútbol argentino entre 2008 y 2022. Se basa en datos de los 18 equipos con mayor presencia en la primera división durante ese período, permitiendo explorar tendencias, comparar estrategias de clubes y entender la evolución del mercado de fichajes.
 
 ---
+## 🔗 Podés probar el dashboard directamente en tu navegador:[ Demo Online](https://dashboard-futbol-argentino.streamlit.app/)
+
+![Dashboard Preview](https://github.com/user-attachments/assets/6d9e66b3-4ac7-4dad-8766-5aa95697ce40)
+
 
 ##  Objetivos del Proyecto
 
