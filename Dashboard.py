@@ -2,494 +2,684 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-import matplotlib.pyplot as plt
-import seaborn as sns
 import plotly.express as px
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import warnings
 warnings.filterwarnings('ignore')
 
-# Configuración de la página
 st.set_page_config(
     page_title="Dashboard Fútbol Argentino",
     page_icon="⚽",
     layout="wide",
-    initial_sidebar_state="expanded"
+    initial_sidebar_state="collapsed"
 )
 
-# Cargar datos
+# ─── CUSTOM CSS: Dark theme matching design ───
+st.markdown("""
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;600;700&display=swap');
+
+    /* Hide Streamlit defaults */
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
+    header {visibility: hidden;}
+    .stDeployButton {display: none;}
+
+    /* Root dark theme */
+    .stApp, [data-testid="stAppViewContainer"], .main .block-container {
+        background-color: #060e0a !important;
+        color: #f0fdf4;
+    }
+    [data-testid="stHeader"] { background: transparent !important; }
+
+    /* Sidebar styling */
+    [data-testid="stSidebar"] {
+        background: rgba(6,14,10,0.97) !important;
+        border-right: 1px solid rgba(74,222,128,0.14) !important;
+    }
+    [data-testid="stSidebar"] * { color: #f0fdf4 !important; }
+    [data-testid="stSidebar"] .stMultiSelect label,
+    [data-testid="stSidebar"] .stSelectbox label { color: #4ade80 !important; font-weight: 600 !important; font-size: 11px !important; letter-spacing: 2px !important; text-transform: uppercase !important; }
+    [data-testid="stSidebar"] [data-testid="stMultiSelect"] > div > div { background: rgba(10,20,13,0.88) !important; border: 1px solid rgba(74,222,128,0.2) !important; border-radius: 10px !important; }
+    [data-testid="stSidebar"] [data-baseweb="tag"] { background: rgba(34,197,94,0.2) !important; border: 1px solid rgba(74,222,128,0.3) !important; }
+    [data-testid="stSidebar"] .stMarkdown hr { border-color: rgba(74,222,128,0.15) !important; }
+
+    /* Block container */
+    .block-container { padding-top: 0 !important; max-width: 1400px !important; }
+
+    /* Tabs */
+    .stTabs [data-baseweb="tab-list"] { background: transparent !important; border-bottom: 1px solid rgba(30,52,38,0.9) !important; gap: 8px !important; }
+    .stTabs [data-baseweb="tab"] {
+        background: rgba(10,20,13,0.5) !important;
+        color: #5a9070 !important;
+        border: 1px solid rgba(30,52,38,0.9) !important;
+        border-bottom: none !important;
+        border-radius: 10px 10px 0 0 !important;
+        padding: 10px 24px !important;
+        font-family: 'DM Sans', sans-serif !important;
+        font-weight: 600 !important;
+        font-size: 13px !important;
+        letter-spacing: 0.5px !important;
+    }
+    .stTabs [data-baseweb="tab"][aria-selected="true"] {
+        background: rgba(10,20,13,0.88) !important;
+        color: #4ade80 !important;
+        border-color: rgba(74,222,128,0.3) !important;
+    }
+    .stTabs [data-baseweb="tab-panel"] { background: transparent !important; padding-top: 24px !important; }
+
+    /* Plotly charts container */
+    .stPlotlyChart { background: transparent !important; }
+
+    /* Expander */
+    .streamlit-expanderHeader { background: rgba(10,20,13,0.7) !important; color: #4ade80 !important; border: 1px solid rgba(30,52,38,0.9) !important; border-radius: 12px !important; }
+    .streamlit-expanderContent { background: rgba(10,20,13,0.5) !important; border: 1px solid rgba(30,52,38,0.9) !important; }
+
+    /* Dataframe */
+    [data-testid="stDataFrame"] { border-radius: 12px !important; overflow: hidden !important; }
+
+    /* Download button */
+    .stDownloadButton > button {
+        background: linear-gradient(135deg, #22c55e, #15803d) !important;
+        color: #f0fdf4 !important;
+        border: none !important;
+        border-radius: 10px !important;
+        font-weight: 700 !important;
+        letter-spacing: 1px !important;
+        padding: 10px 24px !important;
+        transition: box-shadow 0.3s !important;
+    }
+    .stDownloadButton > button:hover { box-shadow: 0 0 24px rgba(34,197,94,0.4) !important; }
+
+    /* Metrics - hide default */
+    [data-testid="stMetric"] { display: none; }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: #060e0a; }
+    ::-webkit-scrollbar-thumb { background: #22c55e; border-radius: 3px; }
+
+    /* Remove padding on inner elements */
+    .element-container { margin: 0 !important; }
+
+    /* Links in markdown */
+    a { color: #4ade80 !important; }
+</style>
+""", unsafe_allow_html=True)
+
+
+# ─── PLOTLY THEME ───
+PLOTLY_LAYOUT = dict(
+    paper_bgcolor='rgba(0,0,0,0)',
+    plot_bgcolor='rgba(0,0,0,0)',
+    font=dict(family="DM Sans, sans-serif", color="#5a9070", size=11),
+    margin=dict(l=20, r=20, t=40, b=20),
+    xaxis=dict(gridcolor='rgba(30,52,38,0.6)', zerolinecolor='rgba(30,52,38,0.6)'),
+    yaxis=dict(gridcolor='rgba(30,52,38,0.6)', zerolinecolor='rgba(30,52,38,0.6)'),
+    hoverlabel=dict(bgcolor='#0a140d', bordercolor='rgba(74,222,128,0.3)', font=dict(color='#f0fdf4', family='DM Sans')),
+    title=dict(font=dict(size=14, color='#f0fdf4', family='DM Sans'), x=0, xanchor='left'),
+)
+
+GREEN_SEQ = ['#4ade80', '#22c55e', '#16a34a', '#15803d', '#166534', '#14532d', '#0f3d1f']
+GOLD = '#fbbf24'
+BLUE_AR = '#74acdf'
+GREEN_ACCENT = '#4ade80'
+GREEN_DARK = '#22c55e'
+
+
 @st.cache_data
 def load_data():
     try:
-        # Si el archivo está en la misma carpeta
         df = pd.read_excel('futbolargentino.xlsx')
-        
-        # Limpieza básica de datos
         df['Valor de mercado'] = pd.to_numeric(df['Valor de mercado'], errors='coerce')
         df['Edad'] = pd.to_numeric(df['Edad'], errors='coerce')
         df['Altura'] = pd.to_numeric(df['Altura'], errors='coerce')
         df['Temporada'] = pd.to_numeric(df['Temporada'], errors='coerce')
-        
-        # Convertir fecha de fichaje
         df['Fichado'] = pd.to_datetime(df['Fichado'], errors='coerce')
         df['Año Fichaje'] = df['Fichado'].dt.year
-        
-        # Limpiar columnas categóricas - convertir a string y manejar NaN
         df['Club'] = df['Club'].astype(str)
         df['Posicion'] = df['Posicion'].astype(str)
         df['Pie'] = df['Pie'].astype(str)
         df['Equipo Anterior'] = df['Equipo Anterior'].astype(str)
-        
-        # Reemplazar 'nan' strings por NaN
         df = df.replace('nan', np.nan)
-        
         return df
     except FileNotFoundError:
-        st.error(" No se pudo encontrar el archivo 'futbolargentino.xlsx'")
-        st.info(" Asegúrate de que el archivo esté en la misma carpeta que este script")
+        st.error("No se pudo encontrar el archivo 'futbolargentino.xlsx'")
         return None
 
-# Cargar datos
+
 df = load_data()
+if df is None:
+    st.stop()
 
-# Sidebar para navegación
-st.sidebar.title("⚽ Dashboard Fútbol Argentino")
-st.sidebar.markdown("---")
+CLUB_COLORS = {
+    'River Plate': {'ring': '#e3001b', 'bg': '#180008'},
+    'Boca Juniors': {'ring': '#f5c400', 'bg': '#00144a'},
+    'Racing Club': {'ring': '#74b4d4', 'bg': '#001234'},
+    'Independiente': {'ring': '#cc0000', 'bg': '#180000'},
+    'San Lorenzo': {'ring': '#cc0000', 'bg': '#001430'},
+    'Vélez Sársfield': {'ring': '#4169e1', 'bg': '#000e30'},
+    'Estudiantes (LP)': {'ring': '#cc0000', 'bg': '#180000'},
+    'Rosario Central': {'ring': '#f5c400', 'bg': '#001430'},
+    "Newell's Old Boys": {'ring': '#cc0000', 'bg': '#0d0d0d'},
+    'Huracán': {'ring': '#e0e0e0', 'bg': '#141414'},
+    'Colón': {'ring': '#cc0000', 'bg': '#0d0d0d'},
+    'Lanús': {'ring': '#cc0022', 'bg': '#180005'},
+    'Gimnasia (LP)': {'ring': '#4169e1', 'bg': '#000e30'},
+    'Banfield': {'ring': '#22c55e', 'bg': '#001808'},
+    'Argentinos Juniors': {'ring': '#cc0000', 'bg': '#180000'},
+    'Godoy Cruz': {'ring': '#f5c400', 'bg': '#180000'},
+    'Tigre': {'ring': '#4169e1', 'bg': '#001430'},
+}
 
-# Botones de navegación
-page = st.sidebar.radio(
-    "Navegación",
-    [" Introducción", " Dashboard Completo"]
-)
+# ─── NAV BAR ───
+st.markdown("""
+<nav style="position:sticky;top:0;z-index:999;background:rgba(6,14,10,0.94);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);border-bottom:1px solid rgba(74,222,128,0.14);padding:0 48px;display:flex;align-items:center;justify-content:space-between;height:64px;margin:-1rem -1rem 0 -1rem;">
+    <div style="display:flex;align-items:center;gap:14px;">
+        <div style="width:38px;height:38px;background:linear-gradient(135deg,#22c55e,#15803d);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;box-shadow:0 0 18px rgba(34,197,94,0.4);">⚽</div>
+        <span style="font-family:'Bebas Neue',cursive;font-size:22px;letter-spacing:3px;color:#f0fdf4;">Fútbol Argentino</span>
+        <span style="background:rgba(74,222,128,0.1);color:#4ade80;padding:2px 12px;border-radius:100px;font-size:11px;font-weight:700;letter-spacing:1px;border:1px solid rgba(74,222,128,0.25);">2008 – 2022</span>
+    </div>
+    <div style="display:flex;gap:36px;">
+        <span style="color:#86efac;font-size:14px;font-weight:500;">Clubes</span>
+        <span style="color:#86efac;font-size:14px;font-weight:500;">Análisis</span>
+        <span style="color:#86efac;font-size:14px;font-weight:500;">Evolución</span>
+    </div>
+</nav>
+""", unsafe_allow_html=True)
 
-# Página de Introducción
-if page == " Introducción":
-    st.title("Análisis del Fútbol Argentino (2008-2022)")
+
+# ─── HERO SECTION ───
+total_jugadores = f"{len(df):,}"
+total_temporadas = str(df['Temporada'].nunique())
+total_clubs = str(df['Club'].nunique())
+valor_prom = df['Valor de mercado'].mean()
+valor_prom_str = f"${valor_prom/1e6:.2f}M" if valor_prom > 1e6 else f"${valor_prom:,.0f}"
+edad_prom = f"{df['Edad'].mean():.1f}"
+altura_prom = f"{df['Altura'].mean():.2f}m"
+
+st.markdown(f"""
+<section style="position:relative;overflow:hidden;padding:80px 0 100px;display:flex;flex-direction:column;align-items:center;text-align:center;">
+    <div style="position:absolute;inset:0;background:repeating-linear-gradient(90deg,#060e0a 0px,#060e0a 72px,#07100a 72px,#07100a 144px);pointer-events:none;"></div>
+    <div style="position:absolute;inset:0;background:radial-gradient(ellipse 65% 80% at 50% 40%,rgba(34,197,94,0.1),transparent 70%);pointer-events:none;"></div>
+    <div style="position:absolute;top:0;left:50%;transform:translateX(-50%);width:1px;height:80px;background:linear-gradient(to bottom,transparent,rgba(74,222,128,0.5));pointer-events:none;"></div>
+
+    <div style="display:flex;align-items:center;gap:14px;margin-bottom:28px;position:relative;z-index:1;">
+        <div style="height:2px;width:40px;background:linear-gradient(to right,transparent,#74acdf);"></div>
+        <span style="font-size:12px;font-weight:700;letter-spacing:5px;color:#74acdf;text-transform:uppercase;">República Argentina</span>
+        <div style="height:2px;width:40px;background:linear-gradient(to left,transparent,#74acdf);"></div>
+    </div>
+
+    <h1 style="font-family:'Bebas Neue',cursive;font-size:clamp(60px,10vw,120px);line-height:0.88;color:#f0fdf4;margin-bottom:18px;position:relative;z-index:1;letter-spacing:3px;">
+        Fútbol
+        <span style="display:block;background:linear-gradient(120deg,#4ade80 0%,#22c55e 45%,#fbbf24 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">Argentino</span>
+    </h1>
+
+    <p style="font-size:14px;color:#86efac;letter-spacing:7px;text-transform:uppercase;font-weight:600;margin-bottom:56px;position:relative;z-index:1;">
+        Análisis Estadístico · 15 Temporadas
+    </p>
+
+    <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:16px;width:100%;max-width:1100px;position:relative;z-index:1;">
+        <div style="background:rgba(10,20,13,0.88);border:1px solid rgba(74,222,128,0.2);border-radius:14px;padding:22px 14px;transition:transform 0.2s,box-shadow 0.2s;">
+            <div style="font-size:10px;color:#4ade80;letter-spacing:2.5px;text-transform:uppercase;font-weight:700;margin-bottom:10px;">Jugadores</div>
+            <div style="font-family:'Bebas Neue',cursive;font-size:36px;color:#f0fdf4;line-height:1;margin-bottom:5px;">{total_jugadores}</div>
+            <div style="font-size:11px;color:#3d6b4a;">Total registrados</div>
+        </div>
+        <div style="background:rgba(10,20,13,0.88);border:1px solid rgba(74,222,128,0.2);border-radius:14px;padding:22px 14px;">
+            <div style="font-size:10px;color:#4ade80;letter-spacing:2.5px;text-transform:uppercase;font-weight:700;margin-bottom:10px;">Temporadas</div>
+            <div style="font-family:'Bebas Neue',cursive;font-size:36px;color:#f0fdf4;line-height:1;margin-bottom:5px;">{total_temporadas}</div>
+            <div style="font-size:11px;color:#3d6b4a;">2008 – 2022</div>
+        </div>
+        <div style="background:rgba(10,20,13,0.88);border:1px solid rgba(74,222,128,0.2);border-radius:14px;padding:22px 14px;">
+            <div style="font-size:10px;color:#4ade80;letter-spacing:2.5px;text-transform:uppercase;font-weight:700;margin-bottom:10px;">Clubes</div>
+            <div style="font-family:'Bebas Neue',cursive;font-size:36px;color:#f0fdf4;line-height:1;margin-bottom:5px;">{total_clubs}</div>
+            <div style="font-size:11px;color:#3d6b4a;">Primera División</div>
+        </div>
+        <div style="background:rgba(10,20,13,0.88);border:1px solid rgba(251,191,36,0.22);border-radius:14px;padding:22px 14px;">
+            <div style="font-size:10px;color:#fbbf24;letter-spacing:2.5px;text-transform:uppercase;font-weight:700;margin-bottom:10px;">Valor Prom.</div>
+            <div style="font-family:'Bebas Neue',cursive;font-size:36px;color:#fbbf24;line-height:1;margin-bottom:5px;">{valor_prom_str}</div>
+            <div style="font-size:11px;color:#3d6b4a;">USD por jugador</div>
+        </div>
+        <div style="background:rgba(10,20,13,0.88);border:1px solid rgba(74,222,128,0.2);border-radius:14px;padding:22px 14px;">
+            <div style="font-size:10px;color:#4ade80;letter-spacing:2.5px;text-transform:uppercase;font-weight:700;margin-bottom:10px;">Edad Prom.</div>
+            <div style="font-family:'Bebas Neue',cursive;font-size:36px;color:#f0fdf4;line-height:1;margin-bottom:5px;">{edad_prom}</div>
+            <div style="font-size:11px;color:#3d6b4a;">años promedio</div>
+        </div>
+        <div style="background:rgba(10,20,13,0.88);border:1px solid rgba(74,222,128,0.2);border-radius:14px;padding:22px 14px;">
+            <div style="font-size:10px;color:#4ade80;letter-spacing:2.5px;text-transform:uppercase;font-weight:700;margin-bottom:10px;">Altura Prom.</div>
+            <div style="font-family:'Bebas Neue',cursive;font-size:36px;color:#f0fdf4;line-height:1;margin-bottom:5px;">{altura_prom}</div>
+            <div style="font-size:11px;color:#3d6b4a;">talla media</div>
+        </div>
+    </div>
+</section>
+
+<div style="height:1px;background:linear-gradient(to right,transparent,rgba(74,222,128,0.22),transparent);margin:0 0 0 0;"></div>
+""", unsafe_allow_html=True)
+
+
+# ─── CLUBES SECTION ───
+clubs_stats = df.groupby('Club').agg(
+    players=('Jugadores', 'count'),
+    avg_val=('Valor de mercado', 'mean')
+).reset_index().sort_values('avg_val', ascending=False)
+
+club_cards_html = ""
+for _, row in clubs_stats.iterrows():
+    club_name = row['Club']
+    players = int(row['players'])
+    avg_val = row['avg_val']
+    avg_val_str = f"{avg_val/1e6:.2f}M" if avg_val >= 1e6 else f"{avg_val/1e3:.0f}K"
+
+    colors = CLUB_COLORS.get(club_name, {'ring': '#4ade80', 'bg': '#0a140d'})
+    abbr = ''.join([w[0] for w in club_name.split()[:3]]).upper()[:3]
+
+    club_cards_html += f"""
+    <div style="background:rgba(10,20,13,0.7);border:1px solid rgba(30,52,38,0.9);border-radius:16px;padding:24px 12px;display:flex;flex-direction:column;align-items:center;gap:13px;transition:transform 0.25s,box-shadow 0.25s;cursor:pointer;"
+         onmouseover="this.style.transform='translateY(-7px)';this.style.boxShadow='0 18px 48px rgba(0,0,0,0.45)'"
+         onmouseout="this.style.transform='translateY(0)';this.style.boxShadow='none'">
+        <div style="width:68px;height:68px;border-radius:50%;background:{colors['bg']};border:2.5px solid {colors['ring']};display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 0 18px {colors['ring']}44;">
+            <span style="font-family:'Bebas Neue',cursive;font-size:20px;letter-spacing:1px;color:{colors['ring']};">{abbr}</span>
+        </div>
+        <div style="text-align:center;">
+            <div style="font-weight:700;font-size:13px;color:#f0fdf4;line-height:1.35;margin-bottom:4px;">{club_name}</div>
+            <div style="font-size:11px;color:#3d6b4a;">{players} jugadores</div>
+        </div>
+        <div style="background:rgba(251,191,36,0.08);border:1px solid rgba(251,191,36,0.2);border-radius:8px;padding:4px 12px;font-size:12px;font-weight:700;color:#fbbf24;">
+            ${avg_val_str}
+        </div>
+    </div>
+    """
+
+st.markdown(f"""
+<section style="padding:60px 0;">
+    <div style="display:flex;align-items:baseline;gap:20px;margin-bottom:48px;">
+        <h2 style="font-family:'Bebas Neue',cursive;font-size:52px;letter-spacing:2px;color:#f0fdf4;line-height:1;margin:0;">Los Clubes</h2>
+        <span style="font-size:14px;color:#3d6b4a;font-weight:500;">{len(clubs_stats)} equipos · Primera División Argentina</span>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(168px,1fr));gap:16px;">
+        {club_cards_html}
+    </div>
+</section>
+<div style="height:1px;background:linear-gradient(to right,transparent,rgba(74,222,128,0.22),transparent);"></div>
+""", unsafe_allow_html=True)
+
+
+# ─── SIDEBAR FILTERS ───
+with st.sidebar:
+    st.markdown("""
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:24px;">
+        <div style="width:32px;height:32px;background:linear-gradient(135deg,#22c55e,#15803d);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:17px;box-shadow:0 0 14px rgba(34,197,94,0.4);">⚽</div>
+        <span style="font-family:'Bebas Neue',cursive;font-size:19px;letter-spacing:2.5px;color:#f0fdf4;">Filtros</span>
+    </div>
+    """, unsafe_allow_html=True)
     st.markdown("---")
-    
-    col1, col2 = st.columns([2, 1])
-    
-    with col1:
-        st.header(" Descripción del Dashboard")
-        st.markdown("""
-        Este dashboard analiza datos completos de jugadores del fútbol argentino desde 2008 hasta 2022, 
-        incluyendo información de **18 equipos** que más temporadas han jugado en primera división.
-        
-        ###  Datos Incluidos:
-        - **Información de jugadores**: Nombre, posición, edad, altura
-        - **Valores de mercado**: Evolución financiera de los jugadores
-        - **Datos de fichajes**: Fechas y equipos anteriores
-        - **Características físicas**: Altura y pie dominante
-        - **Información por temporada**: Datos desde 2008 a 2022
-        
-        ###  Objetivos del Análisis:
-        1. Identificar patrones en el mercado de fichajes
-        2. Analizar la relación entre edad, posición y valor
-        3. Comparar estrategias de los diferentes clubes
-        4. Seguir la evolución del fútbol argentino
-        """)
-    
-    with col2:
-        if df is not None:
-            st.metric("Total Jugadores", f"{len(df):,}")
-            st.metric("Temporadas Analizadas", f"{df['Temporada'].nunique()}")
-            st.metric("Clubs Incluidos", f"{df['Club'].nunique()}")
-            st.metric("Valor Promedio", f"${df['Valor de mercado'].mean():,.0f}")
-    
-    st.markdown("---")
-    
-    st.header(" Métricas Clave del Dataset")
-    
-    if df is not None:
-        col1, col2, col3, col4 = st.columns(4)
-        
-        with col1:
-            edad_promedio = df['Edad'].mean()
-            st.metric("Edad Promedio", f"{edad_promedio:.1f} años")
-        
-        with col2:
-            altura_promedio = df['Altura'].mean()
-            st.metric("Altura Promedio", f"{altura_promedio:.2f} m")
-        
-        with col3:
-            pie_data = df['Pie'].value_counts()
-            pie_dominante = pie_data.index[0] if len(pie_data) > 0 else "N/A"
-            st.metric("Pie Dominante", pie_dominante)
-        
-        with col4:
-            posicion_data = df['Posicion'].value_counts()
-            posicion_comun = posicion_data.index[0] if len(posicion_data) > 0 else "N/A"
-            st.metric("Posición Más Común", posicion_comun)
-        
-        # Gráfico rápido de preview
-        st.subheader("📈 Vista Previa de los Datos")
-        
-        tab1, tab2 = st.tabs(["Distribución de Edades", "Top Posiciones"])
-        
-        with tab1:
-            fig, ax = plt.subplots(figsize=(10, 4))
-            df['Edad'].hist(bins=20, ax=ax, alpha=0.7, color='skyblue')
-            ax.set_xlabel('Edad')
-            ax.set_ylabel('Frecuencia')
-            ax.set_title('Distribución de Edades de los Jugadores')
-            st.pyplot(fig)
-        
-        with tab2:
-            posiciones_count = df['Posicion'].value_counts().head(10)
-            fig, ax = plt.subplots(figsize=(10, 4))
-            posiciones_count.plot(kind='bar', ax=ax, color='lightgreen', alpha=0.7)
-            ax.set_xlabel('Posición')
-            ax.set_ylabel('Cantidad de Jugadores')
-            ax.set_title('Top 10 Posiciones Más Comunes')
-            plt.xticks(rotation=45)
-            st.pyplot(fig)
 
-# Página del Dashboard Completo
-elif page == " Dashboard Completo":
-    if df is None:
-        st.error("No hay datos disponibles. Por favor, verifica que el archivo esté en la ubicación correcta.")
-        st.stop()
-    
-    st.title(" Dashboard Completo - Fútbol Argentino")
-    st.markdown("---")
-    
-    # Filtros en sidebar
-    st.sidebar.header("🔧 Filtros")
-    
-    # Filtro por temporada
     temporadas = sorted(df['Temporada'].dropna().unique())
-    selected_seasons = st.sidebar.multiselect(
-        "Seleccionar Temporadas",
+    selected_seasons = st.multiselect(
+        "Temporadas",
         options=temporadas,
         default=temporadas[-3:] if len(temporadas) > 2 else temporadas
     )
-    
-    # Filtro por club - manejar posibles valores NaN
-    clubs_data = df['Club'].dropna().unique()
-    clubs = sorted([str(club) for club in clubs_data])
-    selected_clubs = st.sidebar.multiselect(
-        "Seleccionar Clubs",
+
+    clubs = sorted(df['Club'].dropna().unique().tolist())
+    selected_clubs = st.multiselect(
+        "Clubes",
         options=clubs,
         default=clubs[:3] if len(clubs) > 2 else clubs
     )
-    
-    # Filtro por posición - manejar posibles valores NaN
-    posiciones_data = df['Posicion'].dropna().unique()
-    posiciones = sorted([str(pos) for pos in posiciones_data])
-    selected_positions = st.sidebar.multiselect(
-        "Seleccionar Posiciones",
+
+    posiciones = sorted(df['Posicion'].dropna().unique().tolist())
+    selected_positions = st.multiselect(
+        "Posiciones",
         options=posiciones,
         default=posiciones[:3] if len(posiciones) > 2 else posiciones
     )
-    
-    # Aplicar filtros
-    filtered_df = df.copy()
-    if selected_seasons:
-        filtered_df = filtered_df[filtered_df['Temporada'].isin(selected_seasons)]
-    if selected_clubs:
-        filtered_df = filtered_df[filtered_df['Club'].isin(selected_clubs)]
-    if selected_positions:
-        filtered_df = filtered_df[filtered_df['Posicion'].isin(selected_positions)]
-    
-    # Mostrar estadísticas de filtrado
-    col1, col2, col3, col4 = st.columns(4)
-    with col1:
-        st.metric("Jugadores Filtrados", len(filtered_df))
-    with col2:
-        valor_promedio = filtered_df['Valor de mercado'].mean()
-        st.metric("Valor Promedio Filtrado", f"${valor_promedio:,.0f}" if not pd.isna(valor_promedio) else "N/A")
-    with col3:
-        edad_promedio = filtered_df['Edad'].mean()
-        st.metric("Edad Promedio Filtrada", f"{edad_promedio:.1f} años" if not pd.isna(edad_promedio) else "N/A")
-    with col4:
-        st.metric("Clubs Incluidos", filtered_df['Club'].nunique())
-    
-    st.markdown("---")
-    
-    # Pestañas para diferentes análisis
-    tab1, tab2, tab3, tab4 = st.tabs([
-        "👥 Perfil de Jugadores", 
-        "💰 Valor de Mercado", 
-        "🏟️ Equipos y Fichajes",
-        "📈 Evolución Temporal"
-    ])
-    
-    with tab1:
-        st.header(" Perfil de los Jugadores")
-        
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            # Distribución de edades
-            st.subheader("Distribución de Edades")
-            fig = px.histogram(
-                filtered_df, x='Edad', nbins=20,
-                title='Distribución de Edades de los Jugadores',
-                color_discrete_sequence=['skyblue']
-            )
-            st.plotly_chart(fig, use_container_width=True)
-            
-            # Pie dominante
-            st.subheader("Pie Dominante")
-            pie_data = filtered_df['Pie'].value_counts()
-            if len(pie_data) > 0:
-                fig = px.pie(
-                    values=pie_data.values, names=pie_data.index,
-                    title='Distribución del Pie Dominante'
-                )
-                st.plotly_chart(fig, use_container_width=True)
-            else:
-                st.info("No hay datos de pie dominante para los filtros seleccionados")
-        
-        with col2:
-            # Altura por posición
-            st.subheader("Altura Promedio por Posición")
-            altura_posicion = filtered_df.groupby('Posicion')['Altura'].mean().dropna().sort_values(ascending=True)
-            if len(altura_posicion) > 0:
-                fig = px.bar(
-                    x=altura_posicion.values, y=altura_posicion.index,
-                    orientation='h',
-                    title='Altura Promedio por Posición',
-                    color=altura_posicion.values,
-                    color_continuous_scale='viridis'
-                )
-                fig.update_layout(xaxis_title='Altura Promedio (m)', yaxis_title='Posición')
-                st.plotly_chart(fig, use_container_width=True)
-            else:
-                st.info("No hay datos de altura para los filtros seleccionados")
-            
-            # Relación edad vs altura
-            st.subheader("Relación Edad vs Altura")
-            scatter_data = filtered_df.dropna(subset=['Edad', 'Altura'])
-            if len(scatter_data) > 0:
-                fig = px.scatter(
-                    scatter_data, x='Edad', y='Altura', color='Posicion',
-                    title='Edad vs Altura por Posición',
-                    opacity=0.6
-                )
-                st.plotly_chart(fig, use_container_width=True)
-            else:
-                st.info("No hay datos suficientes para mostrar la relación edad vs altura")
-    
-    with tab2:
-        st.header(" Análisis del Valor de Mercado")
-        
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            # Top 10 jugadores más valiosos
-            st.subheader("Top 10 Jugadores Más Valiosos")
-            top_players_data = filtered_df.dropna(subset=['Valor de mercado']).nlargest(10, 'Valor de mercado')
-            if len(top_players_data) > 0:
-                fig = px.bar(
-                    top_players_data, x='Valor de mercado', y='Jugadores',
-                    orientation='h',
-                    title='Top 10 Jugadores por Valor de Mercado',
-                    color='Valor de mercado',
-                    color_continuous_scale='thermal',
-                    hover_data=['Posicion', 'Club']
-                )
-                st.plotly_chart(fig, use_container_width=True)
-            else:
-                st.info("No hay datos de valor de mercado para los filtros seleccionados")
-            
-            # Valor por posición (boxplot)
-            st.subheader("Distribución del Valor por Posición")
-            boxplot_data = filtered_df.dropna(subset=['Valor de mercado', 'Posicion'])
-            if len(boxplot_data) > 0:
-                fig = px.box(
-                    boxplot_data, x='Posicion', y='Valor de mercado',
-                    title='Distribución del Valor de Mercado por Posición'
-                )
-                fig.update_layout(xaxis_tickangle=-45)
-                st.plotly_chart(fig, use_container_width=True)
-            else:
-                st.info("No hay datos suficientes para el boxplot")
-        
-        with col2:
-            # Valor total por club
-            st.subheader("Valor Total por Club")
-            valor_club_data = filtered_df.groupby('Club')['Valor de mercado'].sum().dropna().sort_values(ascending=True)
-            if len(valor_club_data) > 0:
-                fig = px.bar(
-                    x=valor_club_data.values, y=valor_club_data.index,
-                    orientation='h',
-                    title='Valor Total del Plantel por Club',
-                    color=valor_club_data.values,
-                    color_continuous_scale='sunset'
-                )
-                st.plotly_chart(fig, use_container_width=True)
-            else:
-                st.info("No hay datos de valor por club para los filtros seleccionados")
-            
-            # Relación edad vs valor
-            st.subheader("Relación Edad vs Valor de Mercado")
-            scatter_valor_data = filtered_df.dropna(subset=['Edad', 'Valor de mercado', 'Altura'])
-            if len(scatter_valor_data) > 0:
-                fig = px.scatter(
-                    scatter_valor_data, x='Edad', y='Valor de mercado', 
-                    color='Posicion', size='Altura',
-                    title='Edad vs Valor de Mercado (tamaño: altura)',
-                    opacity=0.6,
-                    hover_data=['Jugadores', 'Club']
-                )
-                st.plotly_chart(fig, use_container_width=True)
-            else:
-                st.info("No hay datos suficientes para mostrar la relación edad vs valor")
-    
-    with tab3:
-        st.header(" Análisis de Equipos y Fichajes")
-        
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            # Distribución de posiciones por club
-            st.subheader("Distribución de Posiciones por Club")
-            posicion_club_data = filtered_df.dropna(subset=['Club', 'Posicion'])
-            if len(posicion_club_data) > 0:
-                posicion_club = pd.crosstab(posicion_club_data['Club'], posicion_club_data['Posicion'])
-                fig = px.imshow(
-                    posicion_club,
-                    title='Distribución de Posiciones por Club (Heatmap)',
-                    aspect='auto',
-                    color_continuous_scale='blues'
-                )
-                st.plotly_chart(fig, use_container_width=True)
-            else:
-                st.info("No hay datos suficientes para el heatmap")
-            
-            # Cantidad de jugadores por club
-            st.subheader("Cantidad de Jugadores por Club")
-            jugadores_club_data = filtered_df['Club'].value_counts()
-            if len(jugadores_club_data) > 0:
-                fig = px.bar(
-                    x=jugadores_club_data.values, y=jugadores_club_data.index,
-                    orientation='h',
-                    title='Número de Jugadores por Club',
-                    color=jugadores_club_data.values,
-                    color_continuous_scale='greens'
-                )
-                st.plotly_chart(fig, use_container_width=True)
-            else:
-                st.info("No hay datos de jugadores por club")
-        
-        with col2:
-            # Equipos anteriores más comunes
-            st.subheader("Equipos Anteriores Más Comunes")
-            equipos_anteriores_data = filtered_df['Equipo Anterior'].dropna().value_counts().head(15)
-            if len(equipos_anteriores_data) > 0:
-                fig = px.bar(
-                    x=equipos_anteriores_data.values, y=equipos_anteriores_data.index,
-                    orientation='h',
-                    title='Top 15 Equipos Anteriores Más Comunes',
-                    color=equipos_anteriores_data.values,
-                    color_continuous_scale='purples'
-                )
-                st.plotly_chart(fig, use_container_width=True)
-            else:
-                st.info("No hay datos de equipos anteriores")
-            
-            # Análisis de inferiores vs externos
-            st.subheader("Procedencia de Jugadores")
-            filtered_df['EsInferiores'] = filtered_df['Equipo Anterior'].str.contains('Inferiores', na=False)
-            inferiores_count = filtered_df['EsInferiores'].value_counts()
-            if len(inferiores_count) > 0:
-                fig = px.pie(
-                    values=inferiores_count.values, 
-                    names=['Externos', 'Inferiores'],
-                    title='Proporción de Jugadores de Inferiores vs Externos'
-                )
-                st.plotly_chart(fig, use_container_width=True)
-            else:
-                st.info("No hay datos de procedencia de jugadores")
-    
-    with tab4:
-        st.header(" Evolución Temporal")
-        
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            # Evolución del valor promedio
-            st.subheader("Evolución del Valor Promedio")
-            valor_temporal_data = filtered_df.groupby('Temporada')['Valor de mercado'].mean().dropna()
-            if len(valor_temporal_data) > 0:
-                fig = px.line(
-                    x=valor_temporal_data.index, y=valor_temporal_data.values,
-                    title='Evolución del Valor de Mercado Promedio',
-                    markers=True
-                )
-                fig.update_layout(xaxis_title='Temporada', yaxis_title='Valor Promedio')
-                st.plotly_chart(fig, use_container_width=True)
-            else:
-                st.info("No hay datos temporales de valor")
-            
-            # Fichajes por año
-            st.subheader("Fichajes por Año")
-            if 'Año Fichaje' in filtered_df.columns:
-                fichajes_anio_data = filtered_df['Año Fichaje'].dropna().value_counts().sort_index()
-                if len(fichajes_anio_data) > 0:
-                    fig = px.line(
-                        x=fichajes_anio_data.index, y=fichajes_anio_data.values,
-                        title='Evolución de Fichajes por Año',
-                        markers=True
-                    )
-                    fig.update_layout(xaxis_title='Año', yaxis_title='Número de Fichajes')
-                    st.plotly_chart(fig, use_container_width=True)
-                else:
-                    st.info("No hay datos de fichajes por año")
-        
-        with col2:
-            # Evolución de la edad promedio
-            st.subheader("Evolución de la Edad Promedio")
-            edad_temporal_data = filtered_df.groupby('Temporada')['Edad'].mean().dropna()
-            if len(edad_temporal_data) > 0:
-                fig = px.line(
-                    x=edad_temporal_data.index, y=edad_temporal_data.values,
-                    title='Evolución de la Edad Promedio',
-                    markers=True,
-                    line_shape='spline'
-                )
-                fig.update_layout(xaxis_title='Temporada', yaxis_title='Edad Promedio')
-                st.plotly_chart(fig, use_container_width=True)
-            else:
-                st.info("No hay datos temporales de edad")
-            
-            # Heatmap de fichajes por temporada y club
-            st.subheader("Fichajes por Temporada y Club")
-            heatmap_data = filtered_df.dropna(subset=['Temporada', 'Club'])
-            if len(heatmap_data) > 0:
-                fichajes_heatmap = pd.crosstab(heatmap_data['Temporada'], heatmap_data['Club'])
-                if len(fichajes_heatmap) > 0:
-                    fig = px.imshow(
-                        fichajes_heatmap,
-                        title='Fichajes por Temporada y Club',
-                        aspect='auto',
-                        color_continuous_scale='reds'
-                    )
-                    st.plotly_chart(fig, use_container_width=True)
-                else:
-                    st.info("No hay datos para el heatmap temporal")
-    
-    # Sección de datos crudos
-    st.markdown("---")
-    st.header("📋 Datos Filtrados")
-    
-    with st.expander("Ver datos completos filtrados"):
-        st.dataframe(filtered_df, use_container_width=True)
-        
-        # Opción de descarga
-        csv = filtered_df.to_csv(index=False)
-        st.download_button(
-            label="📥 Descargar datos filtrados como CSV",
-            data=csv,
-            file_name="futbol_argentino_filtrado.csv",
-            mime="text/csv"
-        )
 
-# Footer
-st.sidebar.markdown("---")
-st.sidebar.markdown(
-    "**Dashboard creado para análisis del fútbol argentino**\n"
-    "Datos: Transfermarkt (2008-2022)"
-)
+    st.markdown("---")
+    st.markdown("""
+    <div style="font-size:12px;color:#3d6b4a;line-height:1.6;">
+        <strong style="color:#4ade80;">Fuente:</strong> Transfermarkt<br>
+        <strong style="color:#4ade80;">Datos:</strong> 12,092 jugadores<br>
+        <strong style="color:#4ade80;">Período:</strong> 2008 – 2022
+    </div>
+    """, unsafe_allow_html=True)
+
+filtered_df = df.copy()
+if selected_seasons:
+    filtered_df = filtered_df[filtered_df['Temporada'].isin(selected_seasons)]
+if selected_clubs:
+    filtered_df = filtered_df[filtered_df['Club'].isin(selected_clubs)]
+if selected_positions:
+    filtered_df = filtered_df[filtered_df['Posicion'].isin(selected_positions)]
+
+
+# ─── FILTERED METRICS ───
+f_jugadores = f"{len(filtered_df):,}"
+f_valor = filtered_df['Valor de mercado'].mean()
+f_valor_str = f"${f_valor/1e6:.2f}M" if not pd.isna(f_valor) and f_valor >= 1e6 else (f"${f_valor:,.0f}" if not pd.isna(f_valor) else "N/A")
+f_edad = filtered_df['Edad'].mean()
+f_edad_str = f"{f_edad:.1f}" if not pd.isna(f_edad) else "N/A"
+f_clubs = str(filtered_df['Club'].nunique())
+
+st.markdown(f"""
+<section style="padding:60px 0 20px;">
+    <div style="display:flex;align-items:baseline;gap:20px;margin-bottom:36px;">
+        <h2 style="font-family:'Bebas Neue',cursive;font-size:52px;letter-spacing:2px;color:#f0fdf4;line-height:1;margin:0;">Análisis</h2>
+        <span style="font-size:14px;color:#3d6b4a;font-weight:500;">Distribuciones y comparativas</span>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:32px;">
+        <div style="background:rgba(10,20,13,0.88);border:1px solid rgba(74,222,128,0.2);border-radius:14px;padding:18px 16px;">
+            <div style="font-size:10px;color:#4ade80;letter-spacing:2px;text-transform:uppercase;font-weight:700;margin-bottom:8px;">Jugadores Filtrados</div>
+            <div style="font-family:'Bebas Neue',cursive;font-size:32px;color:#f0fdf4;line-height:1;">{f_jugadores}</div>
+        </div>
+        <div style="background:rgba(10,20,13,0.88);border:1px solid rgba(251,191,36,0.22);border-radius:14px;padding:18px 16px;">
+            <div style="font-size:10px;color:#fbbf24;letter-spacing:2px;text-transform:uppercase;font-weight:700;margin-bottom:8px;">Valor Promedio</div>
+            <div style="font-family:'Bebas Neue',cursive;font-size:32px;color:#fbbf24;line-height:1;">{f_valor_str}</div>
+        </div>
+        <div style="background:rgba(10,20,13,0.88);border:1px solid rgba(74,222,128,0.2);border-radius:14px;padding:18px 16px;">
+            <div style="font-size:10px;color:#4ade80;letter-spacing:2px;text-transform:uppercase;font-weight:700;margin-bottom:8px;">Edad Promedio</div>
+            <div style="font-family:'Bebas Neue',cursive;font-size:32px;color:#f0fdf4;line-height:1;">{f_edad_str} <span style="font-size:14px;color:#3d6b4a;font-family:'DM Sans';">años</span></div>
+        </div>
+        <div style="background:rgba(10,20,13,0.88);border:1px solid rgba(74,222,128,0.2);border-radius:14px;padding:18px 16px;">
+            <div style="font-size:10px;color:#4ade80;letter-spacing:2px;text-transform:uppercase;font-weight:700;margin-bottom:8px;">Clubes Incluidos</div>
+            <div style="font-family:'Bebas Neue',cursive;font-size:32px;color:#f0fdf4;line-height:1;">{f_clubs}</div>
+        </div>
+    </div>
+</section>
+""", unsafe_allow_html=True)
+
+
+def chart_card(label, title, label_color="#4ade80"):
+    return f"""
+    <div style="background:rgba(10,20,13,0.7);border:1px solid rgba(30,52,38,0.9);border-radius:16px;padding:24px 24px 8px;">
+        <div style="font-size:10px;color:{label_color};letter-spacing:2.5px;text-transform:uppercase;font-weight:700;margin-bottom:5px;">{label}</div>
+        <div style="font-weight:700;font-size:15px;color:#f0fdf4;margin-bottom:12px;">{title}</div>
+    </div>
+    """
+
+
+# ─── TABS ───
+tab1, tab2, tab3, tab4 = st.tabs([
+    "PERFIL DE JUGADORES",
+    "VALOR DE MERCADO",
+    "EQUIPOS Y FICHAJES",
+    "EVOLUCIÓN TEMPORAL"
+])
+
+with tab1:
+    col1, col2, col3 = st.columns(3)
+
+    with col1:
+        st.markdown(chart_card("Distribución", "Edad de Jugadores"), unsafe_allow_html=True)
+        fig = px.histogram(
+            filtered_df, x='Edad', nbins=20,
+            color_discrete_sequence=[GREEN_ACCENT]
+        )
+        fig.update_traces(marker_line_color='rgba(74,222,128,0.3)', marker_line_width=1)
+        fig.update_layout(**PLOTLY_LAYOUT, showlegend=False, height=280)
+        st.plotly_chart(fig, use_container_width=True)
+
+    with col2:
+        st.markdown(chart_card("Breakdown", "Pie Dominante"), unsafe_allow_html=True)
+        pie_data = filtered_df['Pie'].value_counts()
+        if len(pie_data) > 0:
+            fig = px.pie(
+                values=pie_data.values, names=pie_data.index,
+                color_discrete_sequence=GREEN_SEQ,
+                hole=0.65
+            )
+            fig.update_traces(
+                textfont=dict(color='#f0fdf4', size=11),
+                marker=dict(line=dict(color='#0a140d', width=2))
+            )
+            fig.update_layout(**PLOTLY_LAYOUT, showlegend=True, height=280,
+                              legend=dict(font=dict(color='#5a9070', size=10)))
+            st.plotly_chart(fig, use_container_width=True)
+
+    with col3:
+        st.markdown(chart_card("Comparativa", "Altura por Posición", GOLD), unsafe_allow_html=True)
+        altura_pos = filtered_df.groupby('Posicion')['Altura'].mean().dropna().sort_values(ascending=True)
+        if len(altura_pos) > 0:
+            fig = px.bar(
+                x=altura_pos.values, y=altura_pos.index, orientation='h',
+                color_discrete_sequence=[GOLD]
+            )
+            fig.update_traces(marker_line_color='rgba(251,191,36,0.3)', marker_line_width=1)
+            fig.update_layout(**PLOTLY_LAYOUT, showlegend=False, height=280)
+            st.plotly_chart(fig, use_container_width=True)
+
+    st.markdown(chart_card("Scatter", "Relación Edad vs Altura por Posición"), unsafe_allow_html=True)
+    scatter_data = filtered_df.dropna(subset=['Edad', 'Altura'])
+    if len(scatter_data) > 0:
+        fig = px.scatter(
+            scatter_data, x='Edad', y='Altura', color='Posicion',
+            opacity=0.6, color_discrete_sequence=GREEN_SEQ + [GOLD, BLUE_AR, '#e3001b', '#f5c400']
+        )
+        fig.update_layout(**PLOTLY_LAYOUT, showlegend=True, height=350,
+                          legend=dict(font=dict(color='#5a9070', size=10)))
+        st.plotly_chart(fig, use_container_width=True)
+
+
+with tab2:
+    col1, col2 = st.columns(2)
+
+    with col1:
+        st.markdown(chart_card("Ranking", "Top 10 Jugadores Más Valiosos", GOLD), unsafe_allow_html=True)
+        top_players = filtered_df.dropna(subset=['Valor de mercado']).nlargest(10, 'Valor de mercado')
+        if len(top_players) > 0:
+            fig = px.bar(
+                top_players, x='Valor de mercado', y='Jugadores', orientation='h',
+                color='Valor de mercado',
+                color_continuous_scale=[[0, '#15803d'], [0.5, '#22c55e'], [1, '#4ade80']],
+                hover_data=['Posicion', 'Club']
+            )
+            fig.update_layout(**PLOTLY_LAYOUT, showlegend=False, height=360, coloraxis_showscale=False)
+            st.plotly_chart(fig, use_container_width=True)
+
+        st.markdown(chart_card("Distribución", "Valor por Posición (Box)", GOLD), unsafe_allow_html=True)
+        boxplot_data = filtered_df.dropna(subset=['Valor de mercado', 'Posicion'])
+        if len(boxplot_data) > 0:
+            fig = px.box(
+                boxplot_data, x='Posicion', y='Valor de mercado',
+                color_discrete_sequence=[GREEN_ACCENT]
+            )
+            fig.update_traces(marker_color=GREEN_ACCENT, line_color=GREEN_ACCENT)
+            fig.update_layout(**PLOTLY_LAYOUT, showlegend=False, height=360, xaxis_tickangle=-45)
+            st.plotly_chart(fig, use_container_width=True)
+
+    with col2:
+        st.markdown(chart_card("Comparativa", "Valor Total por Club"), unsafe_allow_html=True)
+        valor_club = filtered_df.groupby('Club')['Valor de mercado'].sum().dropna().sort_values(ascending=True)
+        if len(valor_club) > 0:
+            fig = px.bar(
+                x=valor_club.values, y=valor_club.index, orientation='h',
+                color_discrete_sequence=[GREEN_ACCENT]
+            )
+            fig.update_traces(marker_line_color='rgba(74,222,128,0.25)', marker_line_width=1)
+            fig.update_layout(**PLOTLY_LAYOUT, showlegend=False, height=360)
+            st.plotly_chart(fig, use_container_width=True)
+
+        st.markdown(chart_card("Scatter", "Edad vs Valor de Mercado", GOLD), unsafe_allow_html=True)
+        scatter_val = filtered_df.dropna(subset=['Edad', 'Valor de mercado', 'Altura'])
+        if len(scatter_val) > 0:
+            fig = px.scatter(
+                scatter_val, x='Edad', y='Valor de mercado',
+                color='Posicion', size='Altura', opacity=0.6,
+                hover_data=['Jugadores', 'Club'],
+                color_discrete_sequence=GREEN_SEQ + [GOLD, BLUE_AR]
+            )
+            fig.update_layout(**PLOTLY_LAYOUT, showlegend=True, height=360,
+                              legend=dict(font=dict(color='#5a9070', size=10)))
+            st.plotly_chart(fig, use_container_width=True)
+
+
+with tab3:
+    col1, col2 = st.columns(2)
+
+    with col1:
+        st.markdown(chart_card("Heatmap", "Posiciones por Club"), unsafe_allow_html=True)
+        pos_club_data = filtered_df.dropna(subset=['Club', 'Posicion'])
+        if len(pos_club_data) > 0:
+            pos_club = pd.crosstab(pos_club_data['Club'], pos_club_data['Posicion'])
+            fig = px.imshow(
+                pos_club, aspect='auto',
+                color_continuous_scale=[[0, '#060e0a'], [0.3, '#14532d'], [0.6, '#22c55e'], [1, '#4ade80']]
+            )
+            fig.update_layout(**PLOTLY_LAYOUT, showlegend=False, height=400)
+            st.plotly_chart(fig, use_container_width=True)
+
+        st.markdown(chart_card("Ranking", "Jugadores por Club"), unsafe_allow_html=True)
+        jug_club = filtered_df['Club'].value_counts()
+        if len(jug_club) > 0:
+            fig = px.bar(
+                x=jug_club.values, y=jug_club.index, orientation='h',
+                color_discrete_sequence=[GREEN_ACCENT]
+            )
+            fig.update_traces(marker_line_color='rgba(74,222,128,0.25)', marker_line_width=1)
+            fig.update_layout(**PLOTLY_LAYOUT, showlegend=False, height=360)
+            st.plotly_chart(fig, use_container_width=True)
+
+    with col2:
+        st.markdown(chart_card("Ranking", "Top 15 Equipos Anteriores", "#a78bfa"), unsafe_allow_html=True)
+        eq_ant = filtered_df['Equipo Anterior'].dropna().value_counts().head(15)
+        if len(eq_ant) > 0:
+            fig = px.bar(
+                x=eq_ant.values, y=eq_ant.index, orientation='h',
+                color_discrete_sequence=['#a78bfa']
+            )
+            fig.update_traces(marker_line_color='rgba(167,139,250,0.3)', marker_line_width=1)
+            fig.update_layout(**PLOTLY_LAYOUT, showlegend=False, height=400)
+            st.plotly_chart(fig, use_container_width=True)
+
+        st.markdown(chart_card("Breakdown", "Procedencia de Jugadores"), unsafe_allow_html=True)
+        filtered_df_temp = filtered_df.copy()
+        filtered_df_temp['EsInferiores'] = filtered_df_temp['Equipo Anterior'].str.contains('Inferiores', na=False)
+        inf_count = filtered_df_temp['EsInferiores'].value_counts()
+        if len(inf_count) > 0:
+            labels = ['Externos' if not k else 'Inferiores' for k in inf_count.index]
+            fig = px.pie(
+                values=inf_count.values, names=labels,
+                color_discrete_sequence=[GREEN_ACCENT, GOLD],
+                hole=0.65
+            )
+            fig.update_traces(
+                textfont=dict(color='#f0fdf4', size=11),
+                marker=dict(line=dict(color='#0a140d', width=2))
+            )
+            fig.update_layout(**PLOTLY_LAYOUT, showlegend=True, height=360,
+                              legend=dict(font=dict(color='#5a9070', size=10)))
+            st.plotly_chart(fig, use_container_width=True)
+
+
+with tab4:
+    st.markdown("""
+    <div style="display:flex;align-items:baseline;gap:20px;margin-bottom:24px;">
+        <h2 style="font-family:'Bebas Neue',cursive;font-size:42px;letter-spacing:2px;color:#f0fdf4;line-height:1;margin:0;">Evolución</h2>
+        <span style="font-size:14px;color:#3d6b4a;font-weight:500;">Tendencias a lo largo del tiempo</span>
+    </div>
+    """, unsafe_allow_html=True)
+
+    col1, col2 = st.columns([2, 1])
+
+    with col1:
+        st.markdown(chart_card("Tendencia", "Valor Promedio de Mercado"), unsafe_allow_html=True)
+        valor_temp = filtered_df.groupby('Temporada')['Valor de mercado'].mean().dropna()
+        if len(valor_temp) > 0:
+            fig = go.Figure()
+            fig.add_trace(go.Scatter(
+                x=valor_temp.index, y=valor_temp.values,
+                mode='lines+markers',
+                line=dict(color=GREEN_ACCENT, width=2.5, shape='spline'),
+                marker=dict(color=GREEN_ACCENT, size=8, line=dict(color='#060e0a', width=2)),
+                fill='tozeroy',
+                fillcolor='rgba(74,222,128,0.08)',
+                hovertemplate='Temporada: %{x}<br>Valor: $%{y:,.0f}<extra></extra>'
+            ))
+            fig.update_layout(**PLOTLY_LAYOUT, showlegend=False, height=340)
+            st.plotly_chart(fig, use_container_width=True)
+
+    with col2:
+        st.markdown(chart_card("Evolución", "Edad Promedio por Temporada", BLUE_AR), unsafe_allow_html=True)
+        edad_temp = filtered_df.groupby('Temporada')['Edad'].mean().dropna()
+        if len(edad_temp) > 0:
+            fig = go.Figure()
+            fig.add_trace(go.Scatter(
+                x=edad_temp.index, y=edad_temp.values,
+                mode='lines+markers',
+                line=dict(color=BLUE_AR, width=2.5, shape='spline'),
+                marker=dict(color=BLUE_AR, size=7, line=dict(color='#060e0a', width=2)),
+                fill='tozeroy',
+                fillcolor='rgba(116,172,223,0.08)',
+                hovertemplate='Temporada: %{x}<br>Edad: %{y:.1f} años<extra></extra>'
+            ))
+            fig.update_layout(**PLOTLY_LAYOUT, showlegend=False, height=340)
+            st.plotly_chart(fig, use_container_width=True)
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        st.markdown(chart_card("Tendencia", "Fichajes por Año"), unsafe_allow_html=True)
+        if 'Año Fichaje' in filtered_df.columns:
+            fichajes = filtered_df['Año Fichaje'].dropna().value_counts().sort_index()
+            if len(fichajes) > 0:
+                fig = go.Figure()
+                fig.add_trace(go.Scatter(
+                    x=fichajes.index, y=fichajes.values,
+                    mode='lines+markers',
+                    line=dict(color=GOLD, width=2.5, shape='spline'),
+                    marker=dict(color=GOLD, size=7, line=dict(color='#060e0a', width=2)),
+                    fill='tozeroy',
+                    fillcolor='rgba(251,191,36,0.08)',
+                    hovertemplate='Año: %{x}<br>Fichajes: %{y}<extra></extra>'
+                ))
+                fig.update_layout(**PLOTLY_LAYOUT, showlegend=False, height=300)
+                st.plotly_chart(fig, use_container_width=True)
+
+    with col2:
+        st.markdown(chart_card("Heatmap", "Fichajes por Temporada y Club"), unsafe_allow_html=True)
+        hm_data = filtered_df.dropna(subset=['Temporada', 'Club'])
+        if len(hm_data) > 0:
+            fichajes_hm = pd.crosstab(hm_data['Temporada'], hm_data['Club'])
+            if len(fichajes_hm) > 0:
+                fig = px.imshow(
+                    fichajes_hm, aspect='auto',
+                    color_continuous_scale=[[0, '#060e0a'], [0.3, '#7f1d1d'], [0.6, '#dc2626'], [1, '#fbbf24']]
+                )
+                fig.update_layout(**PLOTLY_LAYOUT, showlegend=False, height=300)
+                st.plotly_chart(fig, use_container_width=True)
+
+
+# ─── RAW DATA SECTION ───
+st.markdown('<div style="height:1px;background:linear-gradient(to right,transparent,rgba(74,222,128,0.22),transparent);margin:40px 0;"></div>', unsafe_allow_html=True)
+
+st.markdown("""
+<div style="display:flex;align-items:baseline;gap:16px;margin-bottom:16px;">
+    <div style="font-size:10px;color:#4ade80;letter-spacing:2.5px;text-transform:uppercase;font-weight:700;">Datos</div>
+    <div style="font-weight:700;font-size:16px;color:#f0fdf4;">Datos Filtrados</div>
+    <span style="margin-left:auto;font-size:12px;color:#3d6b4a;">Abrí el sidebar para ajustar filtros</span>
+</div>
+""", unsafe_allow_html=True)
+
+with st.expander("Ver datos completos filtrados"):
+    st.dataframe(filtered_df, use_container_width=True)
+    csv = filtered_df.to_csv(index=False)
+    st.download_button(
+        label="Descargar datos filtrados como CSV",
+        data=csv,
+        file_name="futbol_argentino_filtrado.csv",
+        mime="text/csv"
+    )
+
+
+# ─── FOOTER ───
+st.markdown("""
+<footer style="border-top:1px solid rgba(30,52,38,0.8);padding:32px 0;display:flex;align-items:center;justify-content:space-between;margin-top:40px;">
+    <div style="display:flex;align-items:center;gap:12px;">
+        <div style="width:28px;height:28px;background:linear-gradient(135deg,#22c55e,#15803d);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:15px;">⚽</div>
+        <span style="font-family:'Bebas Neue',cursive;font-size:17px;letter-spacing:2.5px;color:#3d6b4a;">Fútbol Argentino</span>
+    </div>
+    <div style="font-size:13px;color:#3d6b4a;">Fuente: Transfermarkt · 12,092 jugadores · 17 clubes · 15 temporadas</div>
+    <div style="font-size:12px;color:#2a4d33;">Dashboard estadístico · Primera División Argentina</div>
+</footer>
+""", unsafe_allow_html=True)
